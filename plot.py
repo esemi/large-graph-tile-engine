@@ -18,11 +18,12 @@ FULL_MAP_PREVIEW_TPL = 'full_map_preview_%d.png'
 FULL_MAP_TPL = 'full_map_%d.eps'
 MINIMAL_NODE_SIZE = 1
 MAX_NODE_SIZE = 100
+INITIAL_CANVAS = 1000
 
 LEVELS = [
-    {'canvas_size': 2000, 'size_border_min': 80, 'size_border_max': MAX_NODE_SIZE, 'size_factor': 1},
-    {'canvas_size': 6000, 'size_border_min': 40, 'size_border_max': 80, 'size_factor': 3},
-    # {'canvas_size': 4500, 'size_border_min': 1, 'size_border_max': 40, 'size_factor': 9}
+    {'size_border_min': 80, 'size_border_max': MAX_NODE_SIZE, 'zoom_factor': 1},
+    {'size_border_min': 40, 'size_border_max': MAX_NODE_SIZE, 'zoom_factor': 3},
+    {'size_border_min': 1, 'size_border_max': 80, 'zoom_factor': 9}
 ]
 
 PREVIEW_OPT = dict(bbox=(1500, 1500), edge_arrow_size=0.15, edge_arrow_width=0.15, edge_width=0.1,
@@ -53,7 +54,7 @@ def prepare_graph_by_zoom_level(g, level_prop: dict):
             v['label'] = ''
             cnt['deleted'] += 1
         else:
-            v['size'] *= level_prop['size_factor']
+            v['size'] *= level_prop['zoom_factor']
     logging.info('prepare nodes %s' % cnt.items())
 
 
@@ -90,14 +91,16 @@ def main():
         prepare_graph_by_zoom_level(local_graph, level)
         logging.info('prepare nodes')
 
-        # todo plot ps file
+        # todo plot preview file
         p = igraph.plot(local_graph, FULL_MAP_PREVIEW_TPL % num, layout=source_layout,
-                        bbox=(level['canvas_size'], level['canvas_size']), **FULL_OPT)
+                        bbox=(INITIAL_CANVAS * level['zoom_factor'], INITIAL_CANVAS * level['zoom_factor']), **FULL_OPT)
         p.save()
-        # p = igraph.plot(local_graph, FULL_MAP_TPL % num, layout=l, **FULL_OPT)
-        del p
-        del local_graph
+        # todo plot eps file
+        igraph.plot(local_graph, FULL_MAP_TPL % num, layout=source_layout,
+                    bbox=(INITIAL_CANVAS * level['zoom_factor'], INITIAL_CANVAS * level['zoom_factor']), **FULL_OPT)
+
         # todo split on tiles?
+
     logging.info('plot ps level files end')
 
 if __name__ == '__main__':
