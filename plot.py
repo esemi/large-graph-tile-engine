@@ -8,23 +8,26 @@ import pickle
 
 import igraph
 
-# fixme filepath
+
 CACHE_ENABLE = False
+# fixme filepath
 GRAPH_FILE = 'graph.gml'
 LAYOUT_FILE = 'graph.layout'
 PREVIEW_FILE = 'preview.png'
 FULL_MAP_PREVIEW_TPL = 'full_map_preview_%d.png'
-FULL_MAP_TPL = 'full_map_%d.ps'
+FULL_MAP_TPL = 'full_map_%d.eps'
 MINIMAL_NODE_SIZE = 1
 MAX_NODE_SIZE = 100
+
 LEVELS = [
-    {'canvas_size': 500, 'size_border': 80},
-    {'canvas_size': 1500, 'size_border': 40},
-    {'canvas_size': 4500, 'size_border': 1}
+    {'canvas_size': 2000, 'size_border_min': 80, 'size_border_max': MAX_NODE_SIZE, 'size_factor': 1},
+    {'canvas_size': 6000, 'size_border_min': 40, 'size_border_max': 80, 'size_factor': 3},
+    # {'canvas_size': 4500, 'size_border_min': 1, 'size_border_max': 40, 'size_factor': 9}
 ]
+
 PREVIEW_OPT = dict(bbox=(1500, 1500), edge_arrow_size=0.15, edge_arrow_width=0.15, edge_width=0.1,
                    vertex_frame_width=0.4, vertex_label_size=12)
-FULL_OPT = dict(bbox=(1000, 1000), edge_arrow_size=0.15, edge_arrow_width=0.15, edge_width=0.1,
+FULL_OPT = dict(edge_arrow_size=0.15, edge_arrow_width=0.15, edge_width=0.1,
                 vertex_frame_width=0.4, vertex_label_size=12)
 
 
@@ -41,14 +44,27 @@ def save_cache(l):
     pickle.dump(l, f)
 
 
+def prepare_graph_by_zoom_level(g, level_prop: dict):
+    cnt = Counter()
+    for v in g.vs:
+        # todo filter edges by deleted nodes?
+        if v['size'] < level_prop['size_border_min'] or v['size'] > level_prop['size_border_max']:
+            v['size'] = 0
+            v['label'] = ''
+            cnt['deleted'] += 1
+        else:
+            v['size'] *= level_prop['size_factor']
+    logging.info('prepare nodes %s' % cnt.items())
+
+
 def main():
     logging.info('compute layout start')
     graph = igraph.Graph.Read_GML(GRAPH_FILE)
     logging.info('graph loaded %d %d', graph.vcount(), graph.ecount())
-    l = read_cache()
-    if not l or not CACHE_ENABLE:
-        l = graph.layout('fr')
-        save_cache(l)
+    source_layout = read_cache()
+    if not source_layout or not CACHE_ENABLE:
+        source_layout = graph.layout('fr')
+        save_cache(source_layout)
     logging.info('compute layout end')
 
     logging.info('node prepare start')
@@ -62,7 +78,7 @@ def main():
     logging.info('node prepare end')
 
     logging.info('plot preview start')
-    p = igraph.plot(graph, PREVIEW_FILE, layout=l, **PREVIEW_OPT)
+    p = igraph.plot(graph, PREVIEW_FILE, layout=source_layout, **PREVIEW_OPT)
     p.save()
     logging.info('plot preview end')
 
@@ -71,19 +87,12 @@ def main():
         logging.info('generate level %s' % level)
         local_graph = deepcopy(graph)
 
-        cnt = Counter()
-        for v in local_graph.vs:
-            # todo filter edges by deleted nodes?
-            if v['size'] < level['size_border']:
-                v['size'] = 0
-                v['label'] = ''
-                cnt['deleted'] += 1
-        logging.info('filter nodes %s' % cnt.items())
+        prepare_graph_by_zoom_level(local_graph, level)
+        logging.info('prepare nodes')
 
         # todo plot ps file
-        opt = FULL_OPT
-        opt['bbox'] = (level['canvas_size'], level['canvas_size'])
-        p = igraph.plot(local_graph, FULL_MAP_PREVIEW_TPL % num, layout=l, **opt)
+        p = igraph.plot(local_graph, FULL_MAP_PREVIEW_TPL % num, layout=source_layout,
+                        bbox=(level['canvas_size'], level['canvas_size']), **FULL_OPT)
         p.save()
         # p = igraph.plot(local_graph, FULL_MAP_TPL % num, layout=l, **FULL_OPT)
         del p
