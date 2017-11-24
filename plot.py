@@ -14,8 +14,11 @@ from wand.image import Image
 CACHE_ENABLE = False
 TILE_SIZE = 256
 # fixme filepath
-TILES_FOLDER = 'data/tiles/0/'
+ZOOM_MAX = 3
+TILES_FOLDER = 'data/tiles'
 GRAPH_FILE = 'graph.gml'
+MAP_TEMPLATE_FILE = 'main.template.js'
+MAP_FILE = 'data/main.js'
 LAYOUT_FILE = 'data/graph.layout'
 PREVIEW_FILE = 'data/preview.png'
 FULL_FILE_PS = 'data/full_map.eps'
@@ -45,7 +48,7 @@ def save_cache(l):
     pickle.dump(l, f)
 
 
-def split_tiles(filename):
+def generate_map(filename):
     img = Image(filename=filename)
     tiles_count = round(img.width / TILE_SIZE)
     canvas_size = tiles_count * TILE_SIZE
@@ -59,14 +62,24 @@ def split_tiles(filename):
     logging.info('tile gen start')
     # todo use convert like (convert tmp.png -crop 8x8@ +repage +adjoin -resize 256x256 tiles/output_8x8_%03d.png)
     cnt = 0
-    shutil.rmtree(TILES_FOLDER, ignore_errors=True)
-    os.makedirs(TILES_FOLDER, exist_ok=True)
+    tiles_folder = TILES_FOLDER + '/%d' % ZOOM_MAX
+    shutil.rmtree(tiles_folder, ignore_errors=True)
+    os.makedirs(tiles_folder, exist_ok=True)
     for x in range(0, tiles_count):
         for y in range(0, tiles_count):
             with img[x * TILE_SIZE:x * TILE_SIZE + TILE_SIZE, y * TILE_SIZE:y * TILE_SIZE + TILE_SIZE] as chunk:
-                chunk.save(filename=TILES_FOLDER + 'tile-%d-%d.png' % (x, y))
+                chunk.save(filename=tiles_folder + '/tile-%d-%d.png' % (x, y))
                 cnt += 1
     logging.info('tile gen end %s' % cnt)
+
+    logging.info('generate map start')
+    with open(MAP_TEMPLATE_FILE) as tpl, open(MAP_FILE, mode='w') as out:
+        source = tpl.read()
+        source = source.replace('%TILES_PATH%', TILES_FOLDER)
+        source = source.replace('%ZOOM_MAX%', str(ZOOM_MAX))
+        out.write(source)
+
+    logging.info('generate map end')
 
 
 def main():
@@ -104,7 +117,7 @@ def main():
     logging.info('generate big png for tiles end')
 
     logging.info('split to tiles start')
-    split_tiles(FULL_FILE_PNG)
+    generate_map(FULL_FILE_PNG)
     logging.info('split to tiles end')
 
 

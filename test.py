@@ -3,9 +3,9 @@
 
 import logging
 
-from plot import split_tiles
+from plot import generate_map
 
 if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG,
                         datefmt='%Y-%m-%d %H:%M:%S')
-    split_tiles('data/test.jpeg')
+    generate_map('data/test.jpeg')
