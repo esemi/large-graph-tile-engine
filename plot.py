@@ -1,24 +1,29 @@
 #! /usr/bin/env python
 #  -*- coding: utf-8 -*-
-
+import shutil
 import subprocess
 import logging
 import pickle
+from copy import deepcopy
 
 import igraph
-from copy import deepcopy
+import os
+from wand.image import Image
+
 
 CACHE_ENABLE = False
 TILE_SIZE = 256
 # fixme filepath
+TILES_FOLDER = 'data/tiles/0/'
 GRAPH_FILE = 'graph.gml'
 LAYOUT_FILE = 'data/graph.layout'
 PREVIEW_FILE = 'data/preview.png'
 FULL_FILE_PS = 'data/full_map.eps'
 FULL_FILE_PNG = 'data/full_map.png'
+TMP_FILE_PNG = 'data/tmp.png'
 MINIMAL_NODE_SIZE = 1
 MAX_NODE_SIZE = 100
-FULL_MAP_SIZE = 2000
+FULL_MAP_SIZE = 10000
 
 
 PREVIEW_OPT = dict(bbox=(1500, 1500), edge_arrow_size=0.15, edge_arrow_width=0.15, edge_width=0.1,
@@ -38,6 +43,30 @@ def read_cache():
 def save_cache(l):
     f = open(LAYOUT_FILE, 'wb')
     pickle.dump(l, f)
+
+
+def split_tiles(filename):
+    img = Image(filename=filename)
+    tiles_count = round(img.width / TILE_SIZE)
+    canvas_size = tiles_count * TILE_SIZE
+    logging.info('compute canvas size %d (%s %s %.2f)' % (canvas_size, img.width, TILE_SIZE, tiles_count))
+
+    logging.info('resize start')
+    img.resize(canvas_size, canvas_size)
+    img.save(filename=TMP_FILE_PNG)
+    logging.info('resize end')
+
+    logging.info('tile gen start')
+    # todo use convert like (convert tmp.png -crop 8x8@ +repage +adjoin -resize 256x256 tiles/output_8x8_%03d.png)
+    cnt = 0
+    shutil.rmtree(TILES_FOLDER, ignore_errors=True)
+    os.makedirs(TILES_FOLDER, exist_ok=True)
+    for x in range(0, tiles_count):
+        for y in range(0, tiles_count):
+            with img[x * TILE_SIZE:x * TILE_SIZE + TILE_SIZE, y * TILE_SIZE:y * TILE_SIZE + TILE_SIZE] as chunk:
+                chunk.save(filename=TILES_FOLDER + 'tile-%d-%d.png' % (x, y))
+                cnt += 1
+    logging.info('tile gen end %s' % cnt)
 
 
 def main():
@@ -74,11 +103,12 @@ def main():
     logging.debug('generate big png for tiles %s %s' % (output, error))
     logging.info('generate big png for tiles end')
 
-    # todo split on tiles?
-#     todo подбираем размер холста кратный TILE_SIZE
+    logging.info('split to tiles start')
+    split_tiles(FULL_FILE_PNG)
+    logging.info('split to tiles end')
 
 
 if __name__ == '__main__':
-    logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG,
+    logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.INFO,
                         datefmt='%Y-%m-%d %H:%M:%S')
     main()
