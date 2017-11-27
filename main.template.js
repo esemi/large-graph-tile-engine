@@ -12,7 +12,7 @@ ymaps.ready(function () {
         var layer = new ymaps.Layer(TILES_PATH + '/%z/tile-%x-%y.png');
         // Указываем доступный диапазон масштабов для данного слоя.
         layer.getZoomRange = function () {
-            return ymaps.vow.resolve([3, 3]);
+            return ymaps.vow.resolve([MAX_ZOOM, MAX_ZOOM]);
         };
         // Добавляем свои копирайты.
         layer.getCopyrights = function () {
@@ -20,23 +20,13 @@ ymaps.ready(function () {
         };
         return layer;
     };
-    // Добавляем в хранилище слоев свой конструктор.
     ymaps.layer.storage.add(LAYER_NAME, Layer);
 
-    /**
-     * Создадим новый тип карты.
-     * MAP_TYPE_NAME - имя нового типа.
-     * LAYER_NAME - ключ в хранилище слоев или функция конструктор.
-     */
     var mapType = new ymaps.MapType(MAP_TYPE_NAME, [LAYER_NAME]);
-    // Сохраняем тип в хранилище типов.
     ymaps.mapType.storage.add(MAP_TYPE_NAME, mapType);
 
     // Вычисляем размер всех тайлов на максимальном зуме.
-    var worldSize = Math.pow(2, MAX_ZOOM) * 256,
-        /**
-         * Создаем карту, указав свой новый тип карты.
-         */
+    var worldSize = Math.pow(2, MAX_ZOOM) * %TILE_SIZE%,
         map = new ymaps.Map('map', {
             center: [worldSize / 2,  worldSize / 2],
             zoom: MAX_ZOOM,
@@ -44,7 +34,6 @@ ymaps.ready(function () {
             controls: ['zoomControl'],
             type: MAP_TYPE_NAME
         }, {
-            // Задаем в качестве проекции Декартову.
              projection: new ymaps.projection.Cartesian([[0, 0], [worldSize, worldSize]], [false, false]),
              restrictMapArea: [[0, 0], [worldSize, worldSize]]
         });

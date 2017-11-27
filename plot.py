@@ -8,25 +8,32 @@ from copy import deepcopy
 
 import igraph
 import os
+
+import math
 from wand.image import Image
 
 
-CACHE_ENABLE = False
+CACHE_ENABLE = True
 TILE_SIZE = 256
+MINIMAL_NODE_SIZE = 1
+MAX_NODE_SIZE = 100
+
+# todo zoom grade
+# todo
 # fixme filepath
-ZOOM_MAX = 3
 TILES_FOLDER = 'data/tiles'
 GRAPH_FILE = 'graph.gml'
 MAP_TEMPLATE_FILE = 'main.template.js'
 MAP_FILE = 'data/main.js'
 LAYOUT_FILE = 'data/graph.layout'
 PREVIEW_FILE = 'data/preview.png'
-FULL_FILE_PS = 'data/full_map.eps'
+FULL_FILE_PS = 'data/full_map.ps'
 FULL_FILE_PNG = 'data/full_map.png'
 TMP_FILE_PNG = 'data/tmp.png'
-MINIMAL_NODE_SIZE = 1
-MAX_NODE_SIZE = 100
-FULL_MAP_SIZE = 10000
+
+ZOOM = 3
+FULL_MAP_SIZE = int(math.pow(2, ZOOM) * TILE_SIZE)
+assert 1 <= ZOOM <= 14   # 8388607 is max value for cairo surface
 
 
 PREVIEW_OPT = dict(bbox=(1500, 1500), edge_arrow_size=0.15, edge_arrow_width=0.15, edge_width=0.1,
@@ -54,15 +61,14 @@ def generate_map(filename):
     canvas_size = tiles_count * TILE_SIZE
     logging.info('compute canvas size %d (%s %s %.2f)' % (canvas_size, img.width, TILE_SIZE, tiles_count))
 
-    logging.info('resize start')
-    img.resize(canvas_size, canvas_size)
-    img.save(filename=TMP_FILE_PNG)
-    logging.info('resize end')
+    if img.width != canvas_size or img.height != canvas_size:
+        logging.info('resize start')
+        img.resize(canvas_size, canvas_size)
+        logging.info('resize end')
 
     logging.info('tile gen start')
-    # todo use convert like (convert tmp.png -crop 8x8@ +repage +adjoin -resize 256x256 tiles/output_8x8_%03d.png)
     cnt = 0
-    tiles_folder = TILES_FOLDER + '/%d' % ZOOM_MAX
+    tiles_folder = TILES_FOLDER + '/%d' % ZOOM
     shutil.rmtree(tiles_folder, ignore_errors=True)
     os.makedirs(tiles_folder, exist_ok=True)
     for x in range(0, tiles_count):
@@ -76,7 +82,8 @@ def generate_map(filename):
     with open(MAP_TEMPLATE_FILE) as tpl, open(MAP_FILE, mode='w') as out:
         source = tpl.read()
         source = source.replace('%TILES_PATH%', TILES_FOLDER)
-        source = source.replace('%ZOOM_MAX%', str(ZOOM_MAX))
+        source = source.replace('%ZOOM_MAX%', str(ZOOM))
+        source = source.replace('%TILE_SIZE%', str(TILE_SIZE))
         out.write(source)
 
     logging.info('generate map end')
@@ -105,7 +112,7 @@ def main():
     p.save()
     logging.info('plot preview end')
 
-    logging.info('plot ps file start')
+    logging.info('plot ps file start %s' % FULL_MAP_SIZE)
     igraph.plot(graph, FULL_FILE_PS, layout=source_layout, **FULL_OPT)
     logging.info('plot ps file end')
 
