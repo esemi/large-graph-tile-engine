@@ -4,6 +4,7 @@ ymaps.ready(function () {
         MAP_TYPE_NAME = 'user#customMap',
         TILES_PATH = '%TILES_PATH%',
         MAX_ZOOM = %ZOOM_MAX%;
+        MIN_ZOOM = %ZOOM_MIN%;
 
     /**
      * Конструктор, создающий собственный слой.
@@ -12,7 +13,7 @@ ymaps.ready(function () {
         var layer = new ymaps.Layer(TILES_PATH + '/%z/tile-%x-%y.png');
         // Указываем доступный диапазон масштабов для данного слоя.
         layer.getZoomRange = function () {
-            return ymaps.vow.resolve([MAX_ZOOM, MAX_ZOOM]);
+            return ymaps.vow.resolve([MIN_ZOOM, MAX_ZOOM]);
         };
         // Добавляем свои копирайты.
         layer.getCopyrights = function () {
@@ -29,7 +30,7 @@ ymaps.ready(function () {
     var worldSize = Math.pow(2, MAX_ZOOM) * %TILE_SIZE%,
         map = new ymaps.Map('map', {
             center: [worldSize / 2,  worldSize / 2],
-            zoom: MAX_ZOOM,
+            zoom: MIN_ZOOM,
             nativeFullscreen: true,
             controls: ['zoomControl'],
             type: MAP_TYPE_NAME
